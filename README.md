@@ -87,14 +87,16 @@ Open [http://localhost:8080](http://localhost:8080). Stop the server with **Ctrl
 
 ### Local demo accounts
 
-These credentials are for the seeded local demonstration.
+Use these seeded credentials only for local academic demonstrations.
 
-| Role | Email | Password |
-| --- | --- | --- |
-| Employee | `employee@aegis.local` | `Employee@12345` |
-| Technician, applications | `jamie.apps@aegis.local` | `Technician@12345` |
-| Technician, network | `alex.network@aegis.local` | `Technician@12345` |
-| Administrator | `admin@aegis.local` | `Admin@12345` |
+| Display name | Role | Login email | Demo password | Technician specialization (seeded skills) |
+| --- | --- | --- | --- | --- |
+| Avery Morgan | Administrator | `admin@aegis.local` | `Admin@12345` | ? |
+| Riya Shah | Employee | `employee@aegis.local` | `Employee@12345` | ? |
+| Alex Rivera | Technician | `alex.network@aegis.local` | `Technician@12345` | Network, VPN, DNS, Wi-Fi |
+| Jamie Chen | Technician | `jamie.apps@aegis.local` | `Technician@12345` | Software, applications, payment, authentication |
+| Samira Patel | Technician | `samira.database@aegis.local` | `Technician@12345` | Database, SQL, backup, cloud |
+| Noah Williams | Technician | `noah.security@aegis.local` | `Technician@12345` | Security, MFA, authentication, cloud |
 
 ## Testing and verification
 
