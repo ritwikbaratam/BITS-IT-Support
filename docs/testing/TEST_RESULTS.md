@@ -1,27 +1,23 @@
-# Test results — 20 November 2026 (IST)
+# BITS IT Support verification
 
-| Command or check | Observed result |
+## 22 November 2026 IST
+
+Verification ran on Windows with Node.js 24.18.0, its bundled SQLite 3.53.1, and Microsoft Edge through Playwright Core.
+
+| Check | Observed result |
 | --- | --- |
-| `node --test backend/test` | **53 passed, 0 failed, 0 skipped** on Node 24.18.0, including 11 Phase 4 tests and all 42 baseline tests. |
-| `npm.cmd run check` | Exit 0. All browser and primary backend JavaScript files passed syntax validation. |
-| `node scripts/browser-smoke.mjs` (Edge with Playwright Core) | **14 smoke groups passed.** Retests all three roles, the incident lifecycle, notifications, reports, SLA filters, appearance, and sign-out. Checks real historical suggestions, clearly labelled fallback, SLA Rescue access, deadline refresh, reminders, campus branding and mobile layout. No JavaScript exceptions or HTTP 5xx responses were observed. |
-| Fresh default startup (earlier check) | HTTP 200 from `/api/health`. SQLite contained four seeded incidents with assigned, in-progress, waiting and closed states. |
-| Independent restart (earlier check) | After one Node process created a file-backed incident, a second process reopened the file and returned the same public code, assignment and audit entries via HTTP. |
-| Phase 3 isolated restart | A separate Node process reopened the test database and confirmed the incident remained closed, with resolution, verification and closure audit entries and exactly one response breach. |
-| Phase 4 isolated restart | A separate Node process reopened the test database and confirmed the historical recommendation, closure audit, response breach, and that a replayed reminder produced no second audit or simulated email. |
+| `node --test backend/test` | **56 passed**, 0 failed, 0 cancelled, 0 skipped. |
+| `npm.cmd run check` | Exit 0. All listed application JavaScript files passed the syntax check. |
+| `node scripts/browser-smoke.mjs` | **17 groups passed**, 0 failed. The suite observed no client exceptions or HTTP 5xx responses. |
+| Fresh proposed checkout | Both startup scripts launched from a temporary copy of the retained tree. The PowerShell start initialized a fresh SQLite file, served the branding assets, seeded sample records, and accepted all three role logins. The POSIX script was exercised using Git sh on Windows. |
+| Isolated two-process restart | The second process reopened that SQLite file and returned the created incident, its technician assignment, and its audit record. The seed count stayed stable after restart. |
+| Supplemental HTTP check | Eight combined register criteria returned the expected incident. The employee session received HTTP 403 on an administrator route. |
+| Documentation | Five Mermaid diagrams rendered in Edge. The ER diagram matched all 18 SQLite tables and 26 foreign-key relationships. Relative links and all six screenshot paths resolved. |
 
-The Phase 2 backend tests cover acknowledgement before, at, and after the deadline, both monitor orderings, verification ownership and state rules, HTTP date validation, and category word and phrase matching.
+The [test cases](TEST_CASES.md) map coverage for authentication and authorization, lifecycle transitions, classification and priority, both assignment strategies, notifications and audit history, deadline boundaries, Smart Fix and SLA Rescue. Stabilization checks cover protected disabled accounts, unsupported edit fields, duplicate-name conflicts, trend totals above 100, server-time countdowns, and search and title input behavior.
 
-The Phase 4 tests cover Wi-Fi and authentication terminology, case and punctuation, contextual scoring and sorting, missing and unrelated history, staff access and redaction, curated fallback, exact response and resolution deadlines, inactive lifecycle states, missed acknowledgement, warning and breach deduplication, queue urgency, and the administrator reminder API.
+Edge coverage includes the three role workflows, SLA filters, appearance, sign-out, mobile navigation, and responsive checks at 320, 390, 768, 1120, and 1440 pixels. The checks use isolated SQLite databases. See the [README](../../README.md#testing-and-verification) for commands.
 
-## Repeat the browser smoke check
+## Historical evidence
 
-In PowerShell, install the optional QA tool in a temporary directory. Microsoft Edge must be available. The app and backend suite have zero package dependencies.
-
-```powershell
-npm.cmd install --prefix "$env:TEMP\aegis-qa-tools" playwright-core
-$env:AEGIS_PLAYWRIGHT_MODULE = ([uri]::new("$env:TEMP\aegis-qa-tools\node_modules\playwright-core\index.mjs")).AbsoluteUri
-node scripts/browser-smoke.mjs
-```
-
-The browser script uses an ephemeral port and an isolated in-memory database. Set `AEGIS_SCREENSHOTS_DIR` to capture the dashboard, sign-in screen, loader, account menu, incident detail, Smart Fix, and SLA Rescue. The long-title check used 1440, 1120, 768, 390, and 320 pixels. Browser coverage is limited to Edge.
+Earlier isolated restart checks confirmed persisted closure and verification audits, response breach history, Smart Fix recommendations, and reminder deduplication. The current results above supersede the earlier suite totals.

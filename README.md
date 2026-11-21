@@ -2,7 +2,7 @@
 
 **Intelligent IT Service Management & Incident Resolution System**
 
-BITS IT Support helps a university IT team track an incident from report to closure. It classifies reports, calculates priority, assigns technicians, monitors service-level agreement (SLA) deadlines, and gives the reporter a way to verify the resolution. **AEGIS** is the repository and internal development name.
+BITS IT Support helps a university IT team track an incident from report to closure. It classifies reports, calculates priority, assigns technicians, monitors service-level agreement (SLA) deadlines, and gives the reporter a way to verify the resolution.
 
 Built for the Object-Oriented Programming course (CS F213 / MAC F212) at **BITS Pilani, Hyderabad Campus**, Semester I, 2026–2027.
 
@@ -75,11 +75,11 @@ See the [OOP design notes](docs/OOP_DESIGN_EXPLAINED.md) and [class diagram](doc
 
 ## Getting started
 
-Install **Git** and **Node.js 24 or newer**. The application runs directly from a fresh clone.
+Install **Git** and **Node.js 24 or newer**. Clone the [BITS IT Support repository](https://github.com/ritwikbaratam/BITS-IT-Support) and start the local server.
 
 ```text
-git clone https://github.com/ritwikbaratam/Aegis.git
-cd Aegis
+git clone https://github.com/ritwikbaratam/BITS-IT-Support.git
+cd BITS-IT-Support
 node backend/src/server.js
 ```
 
@@ -98,7 +98,7 @@ These credentials are for the seeded local demonstration.
 
 ## Testing and verification
 
-Verified at `82a026b` on Node.js 24.18.0.
+Verified on Node.js 24.18.0. See the [test results](docs/testing/TEST_RESULTS.md) for the run and its scope.
 
 | Check | Result |
 | --- | --- |
@@ -129,18 +129,22 @@ node scripts/browser-smoke.mjs
 
 Passwords use salted scrypt hashes. Opaque bearer sessions expire and can be revoked through sign-out. The server validates input, enforces role and incident access, and records workflow actions in an audit trail.
 
-This prototype runs locally. Email is simulated in a local outbox, SLA targets use continuous calendar time, and browser verification covers Microsoft Edge.
+This prototype runs locally. Email is simulated in a local outbox, SLA policies are configured by priority and use continuous calendar time, and browser verification covers Microsoft Edge.
 
 ## Documentation
 
 | Topic | References |
 | --- | --- |
-| Course specification and requirements | [Project specification](docs/reference/OOP_S1_2026-2027_Project.pdf) · [Requirements](docs/requirements/REQUIREMENTS.md) · [Compliance matrix](docs/requirements/COMPLIANCE_MATRIX.md) |
+| Course requirements | [Requirements](docs/requirements/REQUIREMENTS.md) · [Compliance matrix](docs/requirements/COMPLIANCE_MATRIX.md) |
 | Architecture and design | [Architecture](docs/architecture/ARCHITECTURE.md) · [OOP design](docs/OOP_DESIGN_EXPLAINED.md) |
 | Diagrams and persistence | [Use case](docs/diagrams/USE_CASE_DIAGRAM.md) · [Class](docs/diagrams/CLASS_DIAGRAM.md) · [Sequence](docs/diagrams/INCIDENT_SEQUENCE.md) · [ER diagram](docs/diagrams/ER_DIAGRAM.md) · [Database schema](docs/database/SCHEMA.md) |
-| Verification | [Test cases](docs/testing/TEST_CASES.md) · [Earlier verification and restart evidence](docs/testing/TEST_RESULTS.md) |
-| Demonstration | [Demo script](docs/demo/DEMO_SCRIPT.md) |
+| Verification | [Test cases](docs/testing/TEST_CASES.md) · [Test results](docs/testing/TEST_RESULTS.md) |
 
-## Academic team
+## Team & Responsibilities
 
-**Contributors** — Team member names pending confirmation.
+| Team member | Leadership and assigned responsibilities |
+| --- | --- |
+| Ritwik Rohan Baratam | Project lead for full-stack integration, OOP architecture, backend automation, technician and administrator functionality, testing, stabilization, repository management, and report preparation. Presents architecture, automation, testing, and the conclusion. |
+| Pavuluri Venkata Manikanteshwara Reddy | Validates the technician workflow, investigation and resolution, SLA timelines, and usability. Presents the technician workspace. |
+| Akhil Peesapati | Validates administration, user and technician management, services, categories, SLA policies, and assignment strategies. Introduces the project and presents administration, SLA Rescue, reports, and the audit trail. |
+| Vadrevu Vivek | Validates employee registration and login, incident reporting and tracking, communication, verification, closure, and feedback. Presents the employee workspace. |

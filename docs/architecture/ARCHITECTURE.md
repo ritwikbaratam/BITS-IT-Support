@@ -1,59 +1,43 @@
-# AEGIS system architecture
+# BITS IT Support architecture
 
-## Architectural style
-
-AEGIS uses a deliberately small **layered monolith**. It is easier to run and defend in a semester project than a distributed system, while still separating responsibilities:
+The application is a layered monolith. A JavaScript single-page application and HTTP JSON API run from the same local Node.js 24 process. Business rules sit in domain collaborators called by the services, and SQLite provides file-backed persistence.
 
 ```mermaid
 flowchart LR
-  UI["Browser SPA · frontend/"] -->|Loopback HTTP JSON| C["REST controller · server.js"]
-  C --> A[Authentication & RBAC]
-  C --> S[Application services]
-  S --> P[Priority calculator]
-  S --> AS[Assignment strategies]
-  S --> L[Lifecycle + SLA service]
-  S --> I[Intelligence services]
-  S --> E[Domain event publisher]
-  E --> N[In-app notification channel]
-  E --> M[Simulated email channel]
-  S --> AU[AuditService]
-  S --> R[Repository layer]
-  AU --> DB
+  UI["Browser SPA"] -->|Loopback HTTP and JSON| HTTP["HTTP controller<br/>server.js"]
+  HTTP --> AUTH["AuthService<br/>Sessions and roles"]
+  HTTP --> S["Incident, Admin and Report services"]
+  S --> D["Domain policies<br/>Lifecycle, priority, assignment, classification, duplicates"]
+  S --> FIX["HistoricalFixMatcher<br/>Smart Fix Suggestions"]
+  S --> SLA["SlaRiskPredictor<br/>SLA monitoring and Rescue"]
+  S --> R["UserRepository and IncidentRepository"]
+  S --> A["AuditService"]
+  S --> E["EventPublisher"]
+  E --> N["In-app notification channel"]
+  E --> M["Simulated email channel"]
+  AUTH --> R
+  R --> DB[("SQLite · backend/data/aegis.db")]
+  S -->|Workflow-specific SQL| DB
+  A --> DB
   N --> DB
   M --> DB
-  R --> DB[("SQLite · backend/data/aegis.db")]
 ```
 
-## Responsibilities
+## Boundaries and data flow
 
-| Layer | Responsibility | Must not do |
-| --- | --- | --- |
-| Browser SPA | Route views, render API data, client-side form feedback, accessible interactions | Decide authorization, create artificial dashboard values, or bypass business rules |
-| HTTP controller | Parse request, authenticate session, authorize role, validate DTO shape, map domain errors to HTTP | Embed lifecycle/SLA/assignment algorithms |
-| Application service | Coordinate a use case within a transaction: create, assign, acknowledge, investigate, resolve, verify, close | Know DOM/UI details |
-| Domain policies | Priority, assignment, lifecycle, duplicate matching, categorisation, SLA risk/escalation | Perform raw HTTP or direct UI work |
-| Event subscribers | Persist audit entries; produce in-app/outbox notifications | Change an incident silently without service validation |
-| Repository | Isolate SQL and row mapping | Make permission/business-rule decisions |
+- The [browser](../../frontend/app.js) renders role-specific views and calls the API. Both the incident detail and SLA Rescue timers measure elapsed time from a server-evaluated UTC timestamp.
+- The [controller](../../backend/src/server.js) parses requests, resolves bearer sessions, guards administrator routes, and maps domain errors to client-safe HTTP responses. Public registration creates employees only.
+- The [services](../../backend/src/services.js) enforce incident ownership, assignment permissions and lifecycle preconditions. They write audit events for important actions. Incident creation commits the incident, assignment and audit records before publishing notifications. SLA Rescue reminder writes and both notification channels run in one transaction.
+- The [domain classes](../../backend/src/domain.js) calculate priority, select technicians, validate state transitions and explain intelligence decisions. The [SQLite layer](../../backend/src/database.js) persists state and history and enforces foreign keys and uniqueness. Some use-case queries live in the services.
 
-## Security boundary
+## Technology rationale
 
-1. `POST /api/auth/register` creates **employees only**.
-2. Privileged user creation is admin-only.
-3. Passwords are never stored as plaintext: Node crypto derives a salted password hash.
-4. Login returns an opaque bearer token. SQLite stores its SHA-256 hash and expiration. The browser uses local storage for this local demonstration. `GET /api/auth/me` returns a public user DTO.
-5. Every non-public request resolves the session and checks the caller's role and incident ownership before it calls a service.
-6. Validation and domain exceptions produce controlled JSON errors, not stack traces.
+| Decision | Reason and trade-off |
+| --- | --- |
+| JavaScript with built-in Node.js modules | One language across the stack and small setup cost. Classes and runtime behavioral contracts support OOP. Java/Spring would add compile-time contracts and more tooling. |
+| Native HTML and CSS | Role-specific SPA served from the API process, with no separate build pipeline. |
+| SQLite | Relational integrity, transactions and restart durability in one local file. A shared relational database and a worker queue would suit a future multi-instance deployment. |
+| Opaque sessions and local credentials | Salted scrypt password hashes and hashed expiring tokens support the local demo. A hosted deployment would need separate transport and identity safeguards. |
+| Deterministic automation | Rules are explainable and testable using fixed clocks and fixtures. Smart Fix coverage depends on the accessible incident history. |
 
-## Data and transaction policy
-
-SQLite is file-backed, so the database survives server restarts. Timestamps are generated by the server in UTC. A multi-step incident operation should either write its incident, assignment/SLA state, audit event, and notification events together or fail without a partial incident. Historical audit, breach, email-outbox, and notification records are retained when a user or service is deactivated.
-
-## Design decisions and alternatives
-
-| Decision | Why selected | Alternative considered | Trade-off |
-| --- | --- | --- | --- |
-| Node 24 built-ins | Environment already provides Node 24 and its SQLite module; zero dependency setup | Java/Spring + H2 | Java would be strong OOP evidence, but Maven was unavailable in the inspected environment |
-| SQLite | A real relational persistent database in one local file | JSON file / cloud database | SQLite provides relations and constraints but is not a multi-node database |
-| SPA served by backend | One local URL and no CORS/development proxy required | Separate Vite dev server | No hot-reload build tool, but lower setup risk |
-| Opaque sessions | Simple local demonstration authentication | JWT | Sessions make logout/revocation simple; production needs secure cookies and deployment controls |
-| Deterministic intelligence | Explainable, testable, no paid AI dependency | External ML/LLM service | Less adaptive, but appropriate for academic and privacy-conscious local use |
+See the [OOP design](../OOP_DESIGN_EXPLAINED.md), [ER diagram](../diagrams/ER_DIAGRAM.md), and [schema](../database/SCHEMA.md).

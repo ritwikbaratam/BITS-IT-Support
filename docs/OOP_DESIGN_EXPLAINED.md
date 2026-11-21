@@ -1,4 +1,4 @@
-# Object-oriented design
+# BITS IT Support object-oriented design
 
 ## Encapsulation and abstraction
 
@@ -14,7 +14,7 @@ The non-HTTP incident creation code uses this actual statement:
 const assignment = AssignmentStrategyFactory.create(strategyKey).assign({ technicians, categoryName: category.name, serviceName: service.name });
 ```
 
-`SkillBasedAssignmentStrategy` and `LeastLoadedAssignmentStrategy` extend `TechnicianAssignmentStrategy`. The first scores skill matches, headroom and active workload. If no skills match, it uses the best available capacity match and explains that fallback. The second sorts by active assignment count and then name. Changing the persisted strategy changes which `assign` method runs. Add a strategy by implementing `key` and `assign`, registering the key in the factory and admin allowlist, and adding decision tests.
+`SkillBasedAssignmentStrategy` and `LeastLoadedAssignmentStrategy` extend `TechnicianAssignmentStrategy`. The skill strategy scores `100 × skill matches + 4 × remaining capacity − active workload`, then breaks ties by lower workload and name. The least-loaded strategy sorts by active workload and then name. The persisted strategy key selects which implementation runs through the same `assign` contract.
 
 `ValidationError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ConflictError` and `LifecycleError` extend `DomainError`. The HTTP controller reads their status, code and message. This is another concrete inheritance relationship used by the application.
 
@@ -35,6 +35,12 @@ publish(event) { this.channels.forEach((channel) => channel.handle(event)); }
 
 Services compose collaborators through constructor parameters. The incident relates to its reporter, technician, service and category through foreign keys. Its audit timeline, assignment history, SLA deadlines and feedback have distinct lifecycles and explicit links. Arrays store timelines and strategy candidates, sets normalize text tokens and deduplicate event recipients, and maps support grouped reports.
 
+## Priority, classification and duplicate detection
+
+`PriorityCalculator` multiplies impact, urgency and service criticality, each scored from 1 to 3. The affected-user adjustment adds 0, 1, 3 or 5 points at the thresholds of 1, 20, 100 and 500 users. P1 starts at 23, P2 at 15, P3 at 7, and scores of 6 or less are P4. The base product combines the three severity dimensions. The bounded adjustment accounts for reach while retaining the base score's influence.
+
+`CategorySuggester` matches whole words and phrases against stored keywords. `DuplicateDetector` compares the text of open incidents the reporter can view, combining shared-token similarity with service and category matches. Suggested relationships are advisory.
+
 ## Smart Fix Suggestions
 
 `IncidentService.recommendations` authorizes the current incident and asks `IncidentRepository` for up to 200 recent resolved, verified, or closed incidents with recorded resolution text. Technicians get only incidents currently assigned to them. Administrators can use the staff-wide history. Employees receive no suggestions. The matcher returns the historical title, service, category, and a resolution summary of up to 360 characters. It excludes private notes, reporter fields, and raw historical descriptions, and masks common credentials, email addresses, URLs, and tokens in displayed text. Pattern-based masking has limited coverage for unexpected secret formats, so operational notes should avoid credentials and personal information.
@@ -54,7 +60,7 @@ Candidates need at least two shared symptom words or one recognized symptom term
 
 ## SLA Rescue
 
-`SlaRiskPredictor.target` reads the persisted response and resolution snapshots and evaluates each against the supplied clock. The incident register, monitor, and rescue queue share that target calculation. The final 20% of the configured calendar-time window is approaching. A target is due at equality and overdue immediately after it. A late acknowledgement remains visible as a missed response even after the applicable countdown moves to the resolution target.
+`SlaRiskPredictor.target` reads the persisted response and resolution snapshots and evaluates each against the supplied clock. The incident register, monitor, and rescue queue share that target calculation. The final 20% of the configured calendar-time window is approaching. A target is due at equality and overdue immediately after it. A late acknowledgement remains visible as a missed response even after the applicable countdown moves to the resolution target. The detail timeline and rescue queue both anchor elapsed time to a timestamp evaluated by the server.
 
 The queue sorts active incidents by the following risk order, then by priority, earliest outstanding deadline, and incident ID. Resolved, verified, and closed incidents are excluded.
 

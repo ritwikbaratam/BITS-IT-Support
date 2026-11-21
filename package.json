@@ -1,8 +1,8 @@
 {
-  "name": "aegis-intelligent-incident-command-center",
+  "name": "bits-it-support",
   "version": "1.0.0",
   "private": true,
-  "description": "AEGIS - Intelligent IT Service Management & Incident Resolution System",
+  "description": "BITS IT Support — Intelligent IT Service Management & Incident Resolution System",
   "type": "module",
   "engines": {
     "node": ">=24.0.0"

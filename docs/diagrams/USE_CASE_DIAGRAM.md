@@ -1,44 +1,43 @@
-# UML use case diagram
+# BITS IT Support use-case diagram
 
 ```mermaid
 flowchart LR
-  employee([Employee])
-  technician([Technician])
-  admin([Administrator])
+  Employee([Employee])
+  Technician([Technician])
+  Admin([Administrator])
 
-  subgraph AEGIS[AEGIS Incident Command Center]
-    login((Register / login))
-    report((Report incident))
-    track((Track and add information))
-    verify((Verify resolution / feedback))
-    assigned((View assigned work))
-    investigate((Acknowledge, investigate, note, request info))
-    resolve((Resolve incident))
-    workload((View workload and deadlines))
-    govern((Manage users, services, categories, SLA))
-    strategy((Select assignment strategy / reassign))
-    monitor((Monitor SLA, escalations, audit, Service Pulse))
-    analytics((View reports / export))
-    notifications((Read notifications))
+  subgraph Support["BITS IT Support"]
+    Register([Register an employee account])
+    Login([Sign in and view notifications])
+    Report([Report and track incidents])
+    Reply([Reply to requests for information])
+    Verify([Verify, close and give feedback])
+    Queue([View assigned queue and workload])
+    Work([Acknowledge, investigate and resolve])
+    Fix([Review Smart Fix Suggestions])
+    Configure([Manage users, technicians, services and categories])
+    Policy([Set SLA policy and assignment strategy])
+    Monitor([Monitor incidents, SLA and escalations])
+    Rescue([Review SLA Rescue and send reminders])
+    Audit([View audit trail, reports and outbox])
   end
 
-  employee --- login
-  employee --- report
-  employee --- track
-  employee --- verify
-  employee --- notifications
-  technician --- login
-  technician --- assigned
-  technician --- investigate
-  technician --- resolve
-  technician --- workload
-  technician --- notifications
-  admin --- login
-  admin --- govern
-  admin --- strategy
-  admin --- monitor
-  admin --- analytics
-  admin --- notifications
+  Employee --- Register
+  Employee --- Login
+  Employee --- Report
+  Employee --- Reply
+  Employee --- Verify
+  Technician --- Login
+  Technician --- Queue
+  Technician --- Work
+  Technician --- Fix
+  Admin --- Login
+  Admin --- Configure
+  Admin --- Policy
+  Admin --- Monitor
+  Admin --- Rescue
+  Admin --- Audit
+  Admin --- Fix
 ```
 
-The relationships are enforced by server-side role checks. A screen hidden in the client is not relied on as an authorization boundary.
+Employees see their own incidents, technicians see assigned incidents, and administrators oversee all records. An administrator can also report an incident and verify its resolution as the original reporter. Authorization is enforced by the [application services](../../backend/src/services.js).

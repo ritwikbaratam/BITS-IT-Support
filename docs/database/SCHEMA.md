@@ -1,8 +1,8 @@
-# Database design and schema notes
+# BITS IT Support database design
 
 ## Persistence choice
 
-AEGIS stores its local data in a file-backed SQLite database at `backend/data/aegis.db`. SQLite gives the project genuine relational persistence, referential links, indexes, and restart durability without a remote service. The database is created and seeded only when needed; it must not be re-seeded over a user's existing data on every start.
+BITS IT Support uses file-backed SQLite at `backend/data/aegis.db` by default. Startup creates missing tables and seeds demo records in development when the users table is empty. The [SQL in database.js](../../backend/src/database.js) is the schema source of truth. The [ER diagram](../diagrams/ER_DIAGRAM.md) shows the relationships.
 
 ## Core tables
 
@@ -15,12 +15,12 @@ AEGIS stores its local data in a file-backed SQLite database at `backend/data/ae
 | `categories` | Configurable classification | unique name, keyword JSON, active flag |
 | `sla_policies` | Editable response/resolution targets | unique priority and positive minute targets |
 | `system_configuration` | Selected assignment strategy | key/value pair persisted across restarts |
-| `incidents` | Current and historical incident state | globally unique public incident number; reporter/category/service FKs; controlled status; priority; timestamps; immutable initial SLA snapshot fields |
+| `incidents` | Current and historical incident state | unique public incident code, reporter and service foreign keys, optional category and assignee, lifecycle state, priority, resolution and SLA snapshots |
 | `incident_assignments` | Assignment/reassignment history | incident, current or former technician, actor, reason, strategy and timestamp |
 | `investigation_notes` | Technician investigation record | incident and author FKs; server timestamp |
 | `incident_comments` | Request-for-information and reply conversation | incident, author, body, timestamp |
-| `incident_relationships` | Related/possible duplicate incidents | source/related IDs; similarity/reason; unique pair; no self-link |
-| `audit_events` | Append-only historical actions | timestamp, actor, role, incident, action, old/new value, metadata |
+| `incident_relationships` | Related or possible duplicate incidents | source and related IDs, relationship type, similarity score, and unique pair constraint |
+| `audit_events` | Workflow history and SLA Rescue reminder evidence | timestamp, optional actor and incident, role, action, old/new value and JSON metadata |
 | `notifications` | In-app notification inbox | recipient, message, link/incident, read timestamp |
 | `simulated_emails` | Local email-outbox simulator | recipient, subject, body, delivery status, incident, timestamp |
 | `sla_breaches` | Breach history | incident, breach type, detected timestamp, unique incident/type. Warnings use flags and audit events. |
@@ -38,19 +38,12 @@ AEGIS stores its local data in a file-backed SQLite database at `backend/data/ae
 
 ## SLA snapshot policy
 
-At creation, an incident copies its applicable policy's targets and deadlines. Editing a policy changes future snapshots. Admin priority edits through the UI preserve the original deadlines. The API also accepts an explicit `recalculateSla` flag and audits the choice. Historical breach records are retained.
+Incident creation copies the applicable policy targets and computes deadlines. Editing a policy changes future snapshots. Admin priority edits through the UI preserve the original deadlines. The API accepts an explicit `recalculateSla` flag and audits the choice. Smart Fix uses historical incident rows with resolutions. SLA Rescue uses the stored deadlines, breach flags, and reminder audit metadata. Historical breach records are retained.
 
 ## Seed data
 
-The seed creates Riya Shah, Avery Morgan and four technicians, plus six services and categories. The payment outage begins assigned and response-overdue. Campus Wi-Fi is under investigation, Student Portal is waiting for information, and the backup failure is closed. The script generates those records from the creation clock on an empty database.
+The seed creates one employee, one administrator, four technicians, six services, six categories, four SLA policies, and sample service dependencies. The fictional payment outage begins assigned and response-overdue. Campus Wi-Fi is under investigation, Student Portal is waiting for information, and the backup failure is closed.
 
 ## Persistence verification
 
-The persistence test procedure is:
-
-1. Create an incident through the authenticated API.
-2. Stop and restart the Node server without deleting `backend/data/aegis.db`.
-3. Authenticate again and fetch the same incident by ID.
-4. Confirm its public number, reporter, assignment, status, and audit timeline remain.
-
-The two-process check passed. See [test results](../testing/TEST_RESULTS.md).
+Persistence checks use an isolated file specified by `AEGIS_DATABASE_PATH`. See [test results](../testing/TEST_RESULTS.md) for the restart evidence.
