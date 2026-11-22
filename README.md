@@ -172,11 +172,13 @@ This prototype runs locally. Email is simulated in a local outbox, SLA policies 
 | Diagrams and persistence | [Use case](docs/diagrams/USE_CASE_DIAGRAM.md) · [Class](docs/diagrams/CLASS_DIAGRAM.md) · [Sequence](docs/diagrams/INCIDENT_SEQUENCE.md) · [ER diagram](docs/diagrams/ER_DIAGRAM.md) · [Database schema](docs/database/SCHEMA.md) |
 | Verification | [Test cases](docs/testing/TEST_CASES.md) · [Test results](docs/testing/TEST_RESULTS.md) |
 
-## Team & Responsibilities
+## Team Contributions
 
-| Team member | Leadership and assigned responsibilities |
+<a name="team--responsibilities"></a>
+
+| Team member | Project contributions |
 | --- | --- |
-| Ritwik Rohan Baratam | Project lead for full-stack integration, OOP architecture, backend automation, technician and administrator functionality, testing, stabilization, repository management, and report preparation. Presents architecture, automation, testing, and the conclusion. |
-| Pavuluri Venkata Manikanteshwara Reddy | Validates the technician workflow, investigation and resolution, SLA timelines, and usability. Presents the technician workspace. |
-| Akhil Peesapati | Validates administration, user and technician management, services, categories, SLA policies, and assignment strategies. Introduces the project and presents administration, SLA Rescue, reports, and the audit trail. |
-| Vadrevu Vivek | Validates employee registration and login, incident reporting and tracking, communication, verification, closure, and feedback. Presents the employee workspace. |
+| Ritwik Rohan Baratam | Led project planning, coordination, and object-oriented architecture as the primary full-stack developer and integrator. Built core employee workflows and substantial technician and administrator functionality, including incident lifecycle automation, SLA Rescue, monitoring, notifications, reporting, and audit history. Implemented rule-based prioritization, technician assignment, historical fix recommendations, and SLA risk detection. Integrated backend services, SQLite persistence, and security, and led testing, stabilization, technical documentation, and repository organization. |
+| Pavuluri Venkata Manikanteshwara Reddy | Validated the technician workflow from assignment visibility and queue navigation through acknowledgement, investigation, resolution submission, and status transitions. Tested investigation notes, employee communication, workload visibility, and SLA response and resolution deadlines. Evaluated the relevance of Smart Fix Suggestions against historical resolutions, checked lifecycle edge cases, and provided feedback on usability and workflow reliability. |
+| Akhil Peesapati | Validated administrator workflows for user and technician management and the configuration of services, incident categories, and SLA policies. Evaluated skill-based and least-loaded assignment, monitoring, SLA Rescue, and escalation behavior. Tested administrator permissions, dashboards, reports, audit history, and notification visibility, and identified improvements to administrative usability. |
+| Vadrevu Vivek | Validated employee registration and sign-in, incident reporting and field validation, and the visibility of category suggestions, calculated priority, and technician assignment. Tested status tracking, activity timelines, and responses to technician information requests. Checked resolution verification and rejection, closure, and feedback, and evaluated navigation and lifecycle consistency across the employee workspace. |
