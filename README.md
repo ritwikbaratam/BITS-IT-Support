@@ -60,6 +60,36 @@ Browser SPA → HTTP API → Application services
 
 The [HTTP controller](backend/src/server.js) authenticates requests and calls [application services](backend/src/services.js). Services coordinate workflows, use [domain policies](backend/src/domain.js) to enforce rules, and persist records through the [database layer](backend/src/database.js). This separation lets tests exercise business decisions independently of the browser.
 
+## Project Structure
+
+```text
+BITS-IT-Support/
+├── backend/
+│   ├── src/          # HTTP server, application services, domain policies, and SQLite access
+│   └── test/         # Automated backend tests
+├── frontend/         # Role-specific HTML, CSS, and JavaScript interface
+│   └── assets/       # BITS emblem and campus photograph
+├── docs/
+│   ├── architecture/
+│   ├── database/
+│   ├── diagrams/
+│   ├── requirements/
+│   ├── screenshots/
+│   └── testing/
+├── scripts/          # Local startup and browser testing
+├── package.json
+├── .gitignore
+└── README.md
+```
+
+- [`backend/src/domain.js`](backend/src/domain.js) defines lifecycle rules, priority scoring, assignment strategies, and algorithms for classification, duplicate detection, Smart Fix Suggestions, and SLA risk.
+- [`backend/src/services.js`](backend/src/services.js) handles authentication, coordinates incident workflows, and publishes notifications.
+- [`backend/src/database.js`](backend/src/database.js) initializes SQLite and defines the repository classes.
+- [`backend/src/server.js`](backend/src/server.js) handles HTTP API requests, serves the frontend, and starts the application.
+- [`frontend/`](frontend/) contains the employee, technician, and administrator interface and campus branding.
+- [`backend/test/`](backend/test/) and [`scripts/browser-smoke.mjs`](scripts/browser-smoke.mjs) verify backend behavior and browser workflows.
+- [`docs/`](docs/) contains architecture notes, database design, UML diagrams, requirements, screenshots, and test evidence.
+
 ## Object-oriented design
 
 `AuthService` encapsulates password and session handling. `IncidentService` abstracts incident operations and composes lifecycle, assignment, audit, and notification collaborators. Inheritance shares behavior across strategies and repositories. Polymorphism lets the service call either assignment implementation through the same `assign` method. SQLite foreign keys associate incidents with reporters, technicians, services, categories, and audit records.
