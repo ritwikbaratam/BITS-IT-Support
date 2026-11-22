@@ -42,7 +42,7 @@ Incident creation copies the applicable policy targets and computes deadlines. E
 
 ## Seed data
 
-The seed creates one employee, one administrator, four technicians, six services, six categories, four SLA policies, and sample service dependencies. The fictional payment outage begins assigned and response-overdue. Campus Wi-Fi is under investigation, Student Portal is waiting for information, and the backup failure is closed.
+The seed creates one employee, one administrator, four technicians, six services, six categories, four SLA policies, and sample service dependencies. The six fictional incidents cover assigned campus Wi-Fi, an active Student Portal investigation, a payment outage awaiting reporter information, a resolved database backup failure, verified campus network access, and a closed payment software installation issue. The workflows create their audit and notification records. The closed payment case provides a historical match for Smart Fix Suggestions. SLA deadlines start from each report's creation time.
 
 ## Persistence verification
 

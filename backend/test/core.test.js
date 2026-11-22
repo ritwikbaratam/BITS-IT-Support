@@ -94,7 +94,7 @@ test('a rejected resolution returns to investigation and preserves the prior res
 test('report filters handle UTC dates, categories and invalid input', (t) => {
   const app = setup();
   t.after(app.close);
-  assert.equal(app.services.reports.overview(app.admin(), { category: 4 }).totalIncidents, 1);
+  assert.equal(app.services.reports.overview(app.admin(), { category: 4 }).totalIncidents, 2);
   assert.equal(app.services.reports.overview(app.admin(), { to: '2000-01-01' }).totalIncidents, 0);
   assert.throws(() => app.services.reports.overview(app.admin(), { from: '2026-02-30' }), { code: 'VALIDATION_ERROR' });
 });
@@ -102,7 +102,12 @@ test('report filters handle UTC dates, categories and invalid input', (t) => {
 test('seed creates roles, incidents, audit history, and simulated email', () => {
   const app = setup();
   assert.equal(app.database.value('SELECT COUNT(*) FROM users'), 6);
-  assert.equal(app.database.value('SELECT COUNT(*) FROM incidents'), 4);
+  const states = app.database.all('SELECT status FROM incidents ORDER BY id').map(({ status }) => status);
+  assert.deepEqual(states, ['WAITING_FOR_INFORMATION', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'VERIFIED', 'CLOSED']);
+  assert.equal(app.database.value('SELECT COUNT(*) FROM sla_breaches'), 0);
+  const payment = seededIncident(app);
+  const { recommendations } = app.services.incidentService.recommendations(app.technician(), payment.id);
+  assert.ok(recommendations.some(({ incident }) => incident.title === 'Payment application software installation failure'));
   assert.ok(app.database.value('SELECT COUNT(*) FROM audit_events') >= 20);
   assert.ok(app.database.value('SELECT COUNT(*) FROM simulated_emails') >= 10);
   app.close();
@@ -205,7 +210,7 @@ test('employee cannot read another employee private incident', () => {
 
 test('invalid lifecycle transition is rejected', () => {
   const app = setup();
-  const incident = seededIncident(app, 'Campus Wi-Fi intermittent');
+  const incident = seededIncident(app, 'Student portal login failure');
   const tech = toPublicUser(app.database.get('SELECT * FROM users WHERE id=:id', { id: incident.assigned_technician_id }));
   assert.equal(incident.status, IncidentStatus.IN_PROGRESS);
   assert.throws(() => app.services.incidentService.acknowledge(tech, incident.id), LifecycleError);
@@ -215,9 +220,9 @@ test('invalid lifecycle transition is rejected', () => {
 test('valid technician lifecycle produces resolution then reporter verification and close', () => {
   const app = setup();
   const employee = app.employee();
-  const incident = seededIncident(app, 'Campus Wi-Fi intermittent');
+  const incident = seededIncident(app, 'Student portal login failure');
   const tech = toPublicUser(app.database.get('SELECT * FROM users WHERE id=:id', { id: incident.assigned_technician_id }));
-  const resolved = app.services.incidentService.resolve(tech, incident.id, { resolution: 'Flushed the faulty resolver cache and confirmed Wi-Fi DNS recovery for affected users.' });
+  const resolved = app.services.incidentService.resolve(tech, incident.id, { resolution: 'Corrected the authentication callback and confirmed that affected students can sign in.' });
   assert.equal(resolved.status, IncidentStatus.RESOLVED);
   const verified = app.services.incidentService.verify(employee, incident.id, { note: 'Access works now.' });
   assert.equal(verified.status, IncidentStatus.VERIFIED);
@@ -228,19 +233,24 @@ test('valid technician lifecycle produces resolution then reporter verification 
 
 test('technician notes and employee comments are persisted', () => {
   const app = setup();
-  const incident = seededIncident(app, 'Campus Wi-Fi intermittent');
+  const incident = seededIncident(app, 'Student portal login failure');
   const tech = toPublicUser(app.database.get('SELECT * FROM users WHERE id=:id', { id: incident.assigned_technician_id }));
   const employee = app.employee();
-  app.services.incidentService.addNote(tech, incident.id, { note: 'Captured new resolver telemetry.' });
-  const changed = app.services.incidentService.comment(employee, incident.id, { message: 'Issue still happens on the third floor.' });
+  app.services.incidentService.addNote(tech, incident.id, { note: 'Captured authentication callback telemetry.' });
+  const changed = app.services.incidentService.comment(employee, incident.id, { message: 'The login loop still happens after MFA.' });
   assert.ok(changed.notes.some((note) => /telemetry/.test(note.note)));
-  assert.ok(changed.comments.some((comment) => /third floor/.test(comment.message)));
+  assert.ok(changed.comments.some((comment) => /after MFA/.test(comment.message)));
   app.close();
 });
 
 test('SLA monitor records each breach only once', () => {
-  const app = setup();
+  let now = Date.parse('2026-11-20T06:00:00Z');
+  const app = setup(true, () => new Date(now));
+  const { incident } = app.services.incidentService.create(app.employee(), paymentReport);
+  now = Date.parse(incident.sla.responseDeadline) + 1;
   const first = app.services.incidentService.monitorSla();
+  assert.equal(first.breaches, 1);
+  assert.equal(app.database.value("SELECT COUNT(*) FROM sla_breaches WHERE incident_id=:id AND breach_type='RESPONSE'", { id: incident.id }), 1);
   const count = app.database.value('SELECT COUNT(*) FROM sla_breaches');
   const second = app.services.incidentService.monitorSla();
   assert.ok(first.scanned > 0);
@@ -281,7 +291,7 @@ test('search and compound filters return only matching records', () => {
 test('reports derive data from persisted incident records', () => {
   const app = setup();
   const report = app.services.reports.overview(app.admin());
-  assert.equal(report.totalIncidents, 4);
+  assert.equal(report.totalIncidents, 6);
   assert.ok(report.byPriority.length > 0);
   assert.ok(report.recentActivity.length > 0);
   app.close();
@@ -303,9 +313,9 @@ test('report trends count more than 100 incidents without changing role scope', 
   incidentService.create(admin, paymentReport);
 
   assert.deepEqual(reports.trends(admin), [
-    { date: '2026-11-20', value: 105 }, { date: '2026-11-21', value: 1 },
+    { date: '2026-11-20', value: 107 }, { date: '2026-11-21', value: 1 },
   ]);
-  assert.deepEqual(reports.trends(employee), [{ date: '2026-11-20', value: 105 }]);
+  assert.deepEqual(reports.trends(employee), [{ date: '2026-11-20', value: 107 }]);
   const assignedTrend = reports.overview(technician).trend;
   assert.ok(assignedTrend.length > 0);
   assert.deepEqual(reports.trends(technician), assignedTrend);
@@ -354,7 +364,7 @@ for (const [resource, recordKey, existingName, attributes] of [
 
 test('closed incident accepts one feedback submission only', () => {
   const app = setup();
-  const incident = seededIncident(app, 'Scheduled database backup failure');
+  const incident = seededIncident(app, 'Payment application software installation failure');
   assert.equal(incident.status, IncidentStatus.CLOSED);
   assert.throws(() => app.services.incidentService.feedback(app.employee(), incident.id, { rating: 4, comment: 'Again' }), ConflictError);
   app.close();

@@ -923,13 +923,88 @@ export function createServices({ database, clock = () => new Date() }) {
   return { users,incidents,audit,publisher,auth,incidentService,admin,reports };
 }
 
+export function seedDemoIncidents({ database, services }) {
+  if (Number(database.value('SELECT COUNT(*) FROM incidents')) > 0) return false;
+
+  const reporter = toPublicUser(services.users.byEmail('employee@aegis.local'));
+  if (!reporter?.active || reporter.role !== Roles.EMPLOYEE) throw new ConflictError('An active demo employee is required to seed incidents');
+  const incidentService = services.incidentService;
+  const examples = [
+    {
+      title: 'Payment application unavailable',
+      description: 'Payment transactions are failing for students and staff. The payment application is unavailable.',
+      service: 'Payment Application', category: 'Software/Application', impact: 3, urgency: 3, affectedUsers: 650,
+      note: 'Confirmed that payment requests are timing out at the checkout worker. The status page and sign-in are reachable.',
+      request: 'Please share the approximate time of a failed checkout and the error text. Leave out card and account details.',
+    },
+    {
+      title: 'Campus Wi-Fi connectivity issue',
+      description: 'Devices repeatedly disconnect from campus Wi-Fi in the second-floor library study area.',
+      service: 'Campus Network', category: 'Network', impact: 2, urgency: 2, affectedUsers: 80,
+    },
+    {
+      title: 'Student portal login failure',
+      description: 'Students attempting to sign in to the Student Portal are sent back to the login page after completing MFA.',
+      service: 'Student Portal', category: 'Authentication', impact: 2, urgency: 3, affectedUsers: 120,
+      note: 'Reproduced the login loop with a test account. Reviewing the authentication callback and session logs.',
+    },
+    {
+      title: 'Scheduled database backup failure',
+      description: 'The nightly database backup failed after the backup volume ran out of space. The live database remains available.',
+      service: 'Database Platform', category: 'Database', impact: 2, urgency: 2, affectedUsers: 2,
+      note: 'Checked retention settings and confirmed earlier backup files are still readable.',
+      resolution: 'Freed the backup volume, corrected the retention job, and verified a successful backup and test restore.',
+    },
+    {
+      title: 'Campus network access issue',
+      description: 'A staff workstation in the library can connect to the wired network but cannot reach internal campus services.',
+      service: 'Campus Network', category: 'Network', impact: 1, urgency: 2, affectedUsers: 1,
+      note: 'The affected wall port was configured for the guest network. A neighboring staff port worked normally.',
+      resolution: 'Restored the correct network configuration on the wall port and confirmed access to internal campus services.',
+      verification: 'The workstation can reach the staff portal and shared drives again.',
+    },
+    {
+      title: 'Payment application software installation failure',
+      description: 'Payment transactions failed at campus checkout workstations after a payment worker software update could not finish.',
+      service: 'Payment Application', category: 'Software/Application', impact: 2, urgency: 2, affectedUsers: 14,
+      note: 'Reproduced the failed installation on a test workstation and found an incomplete payment worker package.',
+      resolution: 'Reinstalled the approved payment worker package, restarted the payment application, and verified successful checkout transactions.',
+      verification: 'A test checkout completed successfully on the updated workstations.',
+      feedback: 'Support confirmed the fix with a test transaction and kept us informed.',
+    },
+  ];
+
+  for (const { service, category, note, request, resolution, verification, feedback, ...input } of examples) {
+    const serviceId = database.value('SELECT id FROM it_services WHERE name=:name AND active=1', { name: service });
+    const categoryId = database.value('SELECT id FROM categories WHERE name=:name AND active=1', { name: category });
+    if (!serviceId || !categoryId) throw new ConflictError(`Missing active demo service or category for ${input.title}`);
+
+    const { incident } = incidentService.create(reporter, { ...input, serviceId, categoryId });
+    if (!incident.assignedTechnician) throw new ConflictError(`No eligible technician for ${incident.title}`);
+
+    if (!note) continue;
+    const technician = toPublicUser(services.users.byId(incident.assignedTechnician.id));
+    incidentService.acknowledge(technician, incident.id);
+    incidentService.startInvestigation(technician, incident.id);
+    incidentService.addNote(technician, incident.id, { note });
+    if (request) incidentService.requestInformation(technician, incident.id, { message: request });
+    if (resolution) incidentService.resolve(technician, incident.id, { resolution });
+    if (verification) incidentService.verify(reporter, incident.id, { note: verification });
+    if (feedback) {
+      incidentService.close(reporter, incident.id);
+      incidentService.feedback(reporter, incident.id, { rating: 5, comment: feedback });
+    }
+  }
+  return true;
+}
+
 /** Initial data remains realistic because active timestamps are generated relative to the current clock. */
 export function seedDemoData({ database, services, clock = () => new Date() }) {
   if (Number(database.value('SELECT COUNT(*) FROM users')) > 0) return false;
   const adminSeed={id:null,role:Roles.ADMINISTRATOR,name:'Demo Seeder'};
   const create=(data)=>services.auth.createUser(data,adminSeed);
   const admin=create({name:'Avery Morgan',email:'admin@aegis.local',password:'Admin@12345',role:Roles.ADMINISTRATOR,capacity:0,available:true});
-  const employee=create({name:'Riya Shah',email:'employee@aegis.local',password:'Employee@12345',role:Roles.EMPLOYEE,capacity:0});
+  create({name:'Riya Shah',email:'employee@aegis.local',password:'Employee@12345',role:Roles.EMPLOYEE,capacity:0});
   create({name:'Alex Rivera',email:'alex.network@aegis.local',password:'Technician@12345',role:Roles.TECHNICIAN,skills:['network','vpn','dns','wifi'],capacity:6});
   create({name:'Jamie Chen',email:'jamie.apps@aegis.local',password:'Technician@12345',role:Roles.TECHNICIAN,skills:['software','application','payment','authentication'],capacity:5});
   create({name:'Samira Patel',email:'samira.database@aegis.local',password:'Technician@12345',role:Roles.TECHNICIAN,skills:['database','sql','backup','cloud'],capacity:5});
@@ -944,19 +1019,7 @@ export function seedDemoData({ database, services, clock = () => new Date() }) {
   const serviceByName = (name) => database.get('SELECT id FROM it_services WHERE name=:name', { name });
   const payment=serviceByName('Payment Application');const network=serviceByName('Campus Network');const portal=serviceByName('Student Portal');const auth=serviceByName('Authentication Service');const databaseService=serviceByName('Database Platform');
   database.run('INSERT INTO service_dependencies(service_id,depends_on_service_id,created_at) VALUES (:serviceId,:dependency,:now)',{serviceId:payment.id,dependency:auth.id,now});database.run('INSERT INTO service_dependencies(service_id,depends_on_service_id,created_at) VALUES (:serviceId,:dependency,:now)',{serviceId:payment.id,dependency:databaseService.id,now});database.run('INSERT INTO service_dependencies(service_id,depends_on_service_id,created_at) VALUES (:serviceId,:dependency,:now)',{serviceId:portal.id,dependency:auth.id,now});
-  const emp=services.auth.actorForToken(services.auth.login(employee.email,'Employee@12345').token);
-  const categoryByName = (name) => database.get('SELECT id FROM categories WHERE name=:name', { name });
-  const software=categoryByName('Software/Application');const net=categoryByName('Network');const authentication=categoryByName('Authentication');const dbcat=categoryByName('Database');
-  const a=services.incidentService.create(emp,{title:'Payment application unavailable',description:'Payment transactions are failing for students and staff. The payment application is unavailable.',serviceId:payment.id,categoryId:software.id,impact:3,urgency:3,affectedUsers:650});
-  const b=services.incidentService.create(emp,{title:'Campus Wi-Fi intermittent',description:'Wi-Fi and DNS lookups intermittently fail in the library.',serviceId:network.id,categoryId:net.id,impact:2,urgency:2,affectedUsers:80});
-  const c=services.incidentService.create(emp,{title:'Student portal login errors',description:'Students cannot sign in through MFA to the student portal.',serviceId:portal.id,categoryId:authentication.id,impact:2,urgency:3,affectedUsers:120});
-  const d=services.incidentService.create(emp,{title:'Scheduled database backup failure',description:'The nightly database backup failed after a SQL storage error.',serviceId:databaseService.id,categoryId:dbcat.id,impact:2,urgency:2,affectedUsers:2});
-  const assignedB=database.get('SELECT assigned_technician_id FROM incidents WHERE id=:id',{id:b.incident.id});const assignedC=database.get('SELECT assigned_technician_id FROM incidents WHERE id=:id',{id:c.incident.id});const assignedD=database.get('SELECT assigned_technician_id FROM incidents WHERE id=:id',{id:d.incident.id});
-  if(assignedB?.assigned_technician_id){const tech=toPublicUser(usersById(database,assignedB.assigned_technician_id));services.incidentService.acknowledge(tech,b.incident.id);services.incidentService.startInvestigation(tech,b.incident.id);services.incidentService.addNote(tech,b.incident.id,{note:'Checking DNS resolver and access-point telemetry.'});}
-  if(assignedC?.assigned_technician_id){const tech=toPublicUser(usersById(database,assignedC.assigned_technician_id));services.incidentService.acknowledge(tech,c.incident.id);services.incidentService.startInvestigation(tech,c.incident.id);services.incidentService.requestInformation(tech,c.incident.id,{message:'Please share the exact MFA error message and browser used.'});}
-  if(assignedD?.assigned_technician_id){const tech=toPublicUser(usersById(database,assignedD.assigned_technician_id));services.incidentService.acknowledge(tech,d.incident.id);services.incidentService.startInvestigation(tech,d.incident.id);services.incidentService.resolve(tech,d.incident.id,{resolution:'Freed the backup volume, corrected the retention job, and verified a successful backup.'});services.incidentService.verify(emp,d.incident.id,{note:'Backup report is now visible and correct.'});services.incidentService.close(emp,d.incident.id);services.incidentService.feedback(emp,d.incident.id,{rating:5,comment:'Clear communication and quick recovery.'});}
-  // Make the critical incident demonstrably close to breach, then persist one historical escalation after monitoring.
-  const past=new Date(clock().getTime()-10*60_000).toISOString();database.run('UPDATE incidents SET created_at=:past,response_deadline=:responseDeadline,resolution_deadline=:resolutionDeadline WHERE id=:id',{id:a.incident.id,past,responseDeadline:addMinutes(past,5),resolutionDeadline:addMinutes(past,30)});services.incidentService.monitorSla();
+  seedDemoIncidents({ database, services });
   services.audit.record({actor:{id:admin.id,role:admin.role},action:'DEMO_DATA_SEEDED',description:'Fictional AEGIS demonstration data was initialized.'});
   return true;
 }
@@ -969,7 +1032,5 @@ export function resetDemoData({ database, services, clock = () => new Date() }) 
   });
   return seedDemoData({ database, services, clock });
 }
-
-function usersById(database,id){return database.get('SELECT * FROM users WHERE id=:id',{id});}
 
 export { safeError };

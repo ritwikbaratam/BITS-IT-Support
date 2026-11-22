@@ -178,8 +178,17 @@ try {
   await admin.getByLabel('Strategy', { exact: true }).selectOption('LEAST_LOADED');
   await admin.getByRole('button', { name: 'Save strategy' }).click();
   await admin.getByText('Assignment strategy saved.', { exact: true }).waitFor();
+  const escalationReporter = app.services.auth.login('employee@aegis.local', 'Employee@12345').user;
+  const { incident: overdue } = app.services.incidentService.create(escalationReporter, {
+    title: 'Campus network response escalation fixture', description: 'The campus network is unreachable in several teaching buildings.',
+    serviceId: 6, categoryId: 1, impact: 3, urgency: 3, affectedUsers: 650,
+  });
+  now = Date.parse(overdue.sla.responseDeadline) + 1_000;
+  await admin.goto(url + '/#/sla-monitor');
+  await admin.getByRole('button', { name: 'Run monitor', exact: true }).click();
+  await admin.getByText('SLA monitor completed.', { exact: true }).waitFor();
   await admin.goto(url + '/#/admin/escalations');
-  await admin.locator('tbody tr').first().waitFor();
+  await admin.getByRole('row').filter({ has: admin.getByRole('cell', { name: String(overdue.id), exact: true }) }).getByText('RESPONSE SLA violation', { exact: true }).waitFor();
   await admin.goto(url + '/#/admin/email-outbox');
   await admin.locator('tbody tr').first().waitFor();
   await admin.getByRole('button', { name: 'View message' }).first().click();
@@ -190,7 +199,7 @@ try {
   await admin.getByLabel('Category', { exact: true }).selectOption({ label: 'Software/Application' });
   await admin.getByRole('button', { name: 'Apply filters' }).click();
   await admin.waitForURL(/category=4/);
-  await admin.locator('.metric-value').first().getByText('2', { exact: true }).waitFor();
+  await admin.locator('.metric-value').first().getByText('3', { exact: true }).waitFor();
   const download = admin.waitForEvent('download');
   await admin.getByRole('button', { name: /Export incident CSV/ }).click();
   assert.match((await download).suggestedFilename(), /^aegis-incidents-.*\.csv$/);
@@ -287,7 +296,7 @@ try {
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'mobile register should not overflow the viewport');
   console.log('PASS mobile navigation');
 
-  const longTitle = 'Campus network report '.concat('X'.repeat(132));
+  const longTitle = 'DNS troubleshooting report '.concat('X'.repeat(132));
   const employeeActor = auth.login('employee@aegis.local', 'Employee@12345').user;
   const { incident: longReport } = incidentService.create(employeeActor, {
     title: longTitle, description: 'Long-title fixture for checking the dashboard and incident detail layout.',
